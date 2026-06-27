@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cook-Pilot 🍳 — Agentic Cooking To-Do List</title>
+  <meta name="description" content="An agentic AI that turns your day into a Breakfast/Lunch/Dinner plan, grocery list, substitutions, and a budget that actually fits — powered by Gemini." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; }
+    /* Visible keyboard focus for accessibility */
+    :focus-visible { outline: 3px solid #16a34a; outline-offset: 2px; border-radius: 6px; }
+    .trail-item { animation: fade 0.25s ease-out; }
+    @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .spin { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .meter-bar { transition: width 0.5s ease, background-color 0.3s ease; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-orange-50 via-amber-50 to-green-50 min-h-screen text-slate-800">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="bg-gradient-to-r from-orange-500 to-green-600 text-white shadow-lg">
+    <div class="max-w-6xl mx-auto px-5 py-5 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Cook-Pilot 🍳</h1>
+        <p class="text-white/90 text-sm">Agentic cooking to-do list — it plans, checks your budget, and <em>re-plans itself</em> until it fits.</p>
+      </div>
+      <!-- API key bar: never hardcoded; stored only in this browser (localStorage) -->
+      <div class="flex items-end gap-2">
+        <label class="text-xs text-white/90 flex flex-col">
+          <span class="mb-1">Gemini API key <span class="opacity-75">(stays in your browser)</span></span>
+          <input id="apiKey" type="password" autocomplete="off" placeholder="Paste AI Studio key…"
+                 class="text-slate-800 rounded-md px-3 py-2 text-sm w-56 border border-white/40" />
+        </label>
+        <button id="saveKey" class="bg-white text-green-700 font-semibold text-sm rounded-md px-3 py-2 hover:bg-green-50">Save</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-5 py-6 grid lg:grid-cols-5 gap-6">
+
+    <!-- ===================== INPUT PANEL ===================== -->
+    <section aria-labelledby="planTitle" class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-5 h-fit">
+      <h2 id="planTitle" class="text-lg font-bold mb-4 flex items-center gap-2">📝 Tell me about your day</h2>
+
+      <form id="planForm" class="space-y-4">
+        <div>
+          <label for="day" class="block text-sm font-medium mb-1">Your day</label>
+          <textarea id="day" rows="3" required
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500"
+            placeholder="e.g. Busy work-from-home day, gym in the evening. Want quick, high-protein vegetarian meals."></textarea>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label for="people" class="block text-sm font-medium mb-1">People</label>
+            <input id="people" type="number" min="1" max="20" value="2"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500" />
+          </div>
+          <div>
+            <label for="budget" class="block text-sm font-medium mb-1">Budget ₹/day</label>
+            <input id="budget" type="number" min="1" step="10" value="400"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500" />
+          </div>
+          <div>
+            <label for="prep" class="block text-sm font-medium mb-1">Max mins/meal</label>
+            <input id="prep" type="number" min="5" max="180" step="5" value="30"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500" />
+          </div>
+        </div>
+
+        <fieldset>
+          <legend class="block text-sm font-medium mb-2">Dietary preferences</legend>
+          <div id="diets" class="flex flex-wrap gap-2" role="group" aria-label="Dietary preferences"></div>
+        </fieldset>
+
+        <div class="flex gap-2 pt-1">
+          <button type="submit" id="generate"
+            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 disabled:opacity-60">
+            <span id="genIcon">🤖</span> <span id="genLabel">Generate Plan</span>
+          </button>
+          <button type="button" id="demo"
+            class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold rounded-lg px-4 py-2.5">Load demo</button>
+        </div>
+        <p class="text-xs text-slate-500">Tip for judges/demo: the default ₹400 budget is intentionally tight, so you can watch the agent re-plan itself.</p>
+      </form>
+    </section>
+
+    <!-- ===================== OUTPUT PANEL ===================== -->
+    <section aria-labelledby="outTitle" class="lg:col-span-3 space-y-5">
+      <h2 id="outTitle" class="sr-only">Your cooking plan</h2>
+
+      <!-- Agent activity trail (a live region: screen readers announce each step) -->
+      <div class="bg-slate-900 text-slate-100 rounded-2xl shadow-sm p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-bold text-sm tracking-wide text-green-400">⚙️ AGENT ACTIVITY TRAIL</h3>
+          <span class="text-[11px] text-slate-400">observe → decide → act → verify</span>
+        </div>
+        <ul id="trail" aria-live="polite" aria-label="Agent activity log"
+            class="space-y-1.5 text-sm font-mono min-h-[3rem] max-h-60 overflow-auto">
+          <li class="text-slate-500">Idle. Add your key, describe your day, and hit Generate.</li>
+        </ul>
+      </div>
+
+      <!-- Budget meter -->
+      <div id="budgetCard" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-4" role="status" aria-live="polite">
+        <div class="flex items-center justify-between mb-2 text-sm font-medium">
+          <span>Budget feasibility</span>
+          <span id="budgetText"></span>
+        </div>
+        <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+          <div id="meter" class="meter-bar h-3 rounded-full bg-green-500" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Meal cards -->
+      <div id="meals" class="grid sm:grid-cols-3 gap-4"></div>
+
+      <!-- Grocery + substitutions -->
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div id="groceryCard" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+          <h3 class="font-bold mb-2 flex items-center gap-2">🛒 Grocery list <span id="groceryTotal" class="ml-auto text-green-700 font-extrabold"></span></h3>
+          <ul id="grocery" class="text-sm divide-y divide-slate-100"></ul>
+        </div>
+        <div id="subsCard" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+          <h3 class="font-bold mb-2 flex items-center gap-2">🔄 Substitutions the agent made</h3>
+          <ul id="subs" class="text-sm space-y-2"></ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-5 pb-8 text-center text-xs text-slate-400">
+    Cook-Pilot — built for Hack2Skill PromptWars · Gemini 2.5 Flash · LLM-provider &amp; output-validation patterns adapted from the <strong>siela</strong> assistant.
+  </footer>
+
+<!-- Optional LOCAL key file (config.local.js) — git-ignored, never committed.
+     Paste your Gemini key there to skip typing it each demo. Safe to delete. -->
+<script src="config.local.js" onerror="window.__noKeyFile = 1"></script>
+<script>
+/* =================================================================================
+   Cook-Pilot — Agentic Cooking To-Do List
+   ---------------------------------------------------------------------------------
+   Architecture (patterns adapted from the `siela` WhatsApp assistant):
+     1. LLM          — provider abstraction with a model fallback chain.
+                       (siela: src/services/llm-provider.js — one source of truth,
+                        Gemini primary, automatic fallback on failure.)
+     2. SCHEMA/PROMPT — strict structured-output contract for the meal plan.
+     3. validatePlan  — deterministic output validation; never trust LLM math.
+                       (siela: src/utils/llm-output-validator.js — treat suspicious
+                        output as a signal to fall back / re-plan, not commit.)
+     4. Agent         — observe → decide → act → verify budget loop (the agentic core).
+     5. UI/render     — accessible, XSS-safe rendering.
+     6. tests         — pure-function self-tests (open with #test in the URL).
+   ================================================================================= */
+
+const $  = (sel) => document.querySelector(sel);
+const $$ = (sel) => [...document.querySelectorAll(sel)];
+
+/* Escape every piece of model-generated text before it touches innerHTML (XSS guard). */
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+const MAX_ITER = 3; // cap the agent loop — efficiency + guaranteed termination
+
+/* ---------- 1. LLM provider (adapted from siela's llm-provider.js) ---------- */
+const LLM = (() => {
+  // siela defaults to gemini-3-flash-preview; we use the GA Flash chain for
+  // reliable structured output. Swap the first entry if your key has 3-flash.
+  const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  const endpoint = (m) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+
+  const getKey = () => (localStorage.getItem('cookpilot_gemini_key') || '').trim();
+  const setKey = (k) => localStorage.setItem('cookpilot_gemini_key', (k || '').trim());
+
+  /** Ask Gemini for JSON matching `schema`. Tries each model in order (fallback). */
+  async function generateJSON(prompt, schema, { temperature = 0.7 } = {}) {
+    const key = getKey();
+    if (!key) throw new Error('Add your Gemini API key (top-right) first.');
+    let lastErr;
+    for (const model of MODELS) {
+      try {
+        const res = await fetch(`${endpoint(model)}?key=${encodeURIComponent(key)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json', responseSchema: schema, temperature }
+          })
+        });
+        if (!res.ok) { lastErr = new Error(`${model}: HTTP ${res.status} ${(await res.text()).slice(0, 160)}`); continue; }
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) { lastErr = new Error(`${model}: empty response`); continue; }
+        return { model, plan: JSON.parse(text) };
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error('All models failed');
+  }
+  return { getKey, setKey, generateJSON, MODELS };
+})();
+
+/* ---------- 2. Structured-output schema (Gemini responseSchema) ---------- */
+const MEAL = {
+  type: 'OBJECT',
+  properties: {
+    name:        { type: 'STRING' },
+    ingredients: { type: 'ARRAY', items: { type: 'STRING' } },
+    prepTimeMin: { type: 'NUMBER' },
+    estCalories: { type: 'NUMBER' },
+    estCost:     { type: 'NUMBER' }
+  },
+  required: ['name', 'ingredients', 'prepTimeMin']
+};
+const PLAN_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    meals: { type: 'OBJECT', properties: { breakfast: MEAL, lunch: MEAL, dinner: MEAL }, required: ['breakfast', 'lunch', 'dinner'] },
+    grocery: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+      name: { type: 'STRING' }, quantity: { type: 'STRING' }, price: { type: 'NUMBER' }, category: { type: 'STRING' }
+    }, required: ['name', 'quantity', 'price'] } },
+    substitutions: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+      original: { type: 'STRING' }, swap: { type: 'STRING' }, reason: { type: 'STRING' }, savings: { type: 'NUMBER' }
+    }, required: ['original', 'swap', 'reason'] } },
+    notes: { type: 'STRING' }
+  },
+  required: ['meals', 'grocery']
+};
+
+/* ---------- 2b. Prompts ---------- */
+function planPrompt(input) {
+  return `You are an expert Indian home-cooking meal planner and budgeting assistant.
+Plan one full day of cooking — Breakfast, Lunch and Dinner — for ${input.people} person(s).
+
+User's day: "${input.day}"
+Dietary preferences: ${input.diets.join(', ') || 'no specific restriction'}
+Max prep time per meal: ${input.prepTime} minutes
+TOTAL daily food budget: Rs ${input.budget} for the whole day, all people combined.
+
+Rules:
+- Suggest realistic, common Indian home dishes matching the user's day, energy needs and diet.
+- Keep each meal within the prep-time limit.
+- Build ONE aggregated grocery list for the day (combine repeated ingredients).
+- Use REALISTIC current Indian market prices in rupees. Each grocery "price" = total cost for the
+  quantity needed for the day (not per-kg). When summed they are the day's grocery cost.
+- Try to keep the grocery total within Rs ${input.budget}, but stay realistic.
+- Return ONLY JSON matching the schema. Numbers are plain numbers (no "Rs", no commas).`;
+}
+function replanPrompt(input, prev, total) {
+  const dishes = `Breakfast="${prev?.meals?.breakfast?.name}", Lunch="${prev?.meals?.lunch?.name}", Dinner="${prev?.meals?.dinner?.name}"`;
+  return `${planPrompt(input)}
+
+REVISION REQUEST — the previous plan (${dishes}) totals Rs ${total}, which EXCEEDS the budget of Rs ${input.budget}.
+Revise to fit WITHIN Rs ${input.budget} by substituting expensive ingredients for cheaper, nutritious
+alternatives (e.g. paneer->tofu/chana, almonds->peanuts, off-season->seasonal veg) and/or simpler dishes,
+while respecting the diet (${input.diets.join(', ') || 'any'}) and keeping meals filling.
+Record EVERY change in the "substitutions" array with the rupee savings.
+Return ONLY JSON matching the schema.`;
+}
+
+/* ---------- 3. Deterministic validation (adapted from siela's llm-output-validator) ---------- */
+/** Validate shape and RECOMPUTE the grocery total ourselves — we never trust the model's arithmetic. */
+function validatePlan(plan) {
+  const issues = [];
+  const meals = plan?.meals || {};
+  ['breakfast', 'lunch', 'dinner'].forEach((m) => { if (!meals[m]?.name) issues.push(`missing ${m}`); });
+  const grocery = Array.isArray(plan?.grocery) ? plan.grocery : [];
+  if (grocery.length === 0) issues.push('empty grocery list');
+  const total = Math.round(grocery.reduce((sum, g) => sum + (Number(g?.price) || 0), 0));
+  return { ok: issues.length === 0, issues, total };
+}
+
+const withinBudget = (total, budget) => total <= budget; // pure, testable
+
+/* ---------- 4. The agentic loop: observe -> decide -> act -> verify ---------- */
+async function runAgent(input) {
+  resetOutput();
+  trail(`🧠 Planning Breakfast, Lunch & Dinner for ${input.people} ${input.people > 1 ? 'people' : 'person'} on a Rs ${input.budget} budget…`, 'text-green-300');
+
+  let { model, plan } = await LLM.generateJSON(planPrompt(input), PLAN_SCHEMA);
+  let { ok, issues, total } = validatePlan(plan);
+  if (!ok) trail(`⚠️ Output check flagged: ${issues.join(', ')} — continuing with best effort.`, 'text-amber-300');
+  trail(`🧮 Drafted via ${model}. Grocery total = Rs ${total} · budget Rs ${input.budget}.`, 'text-slate-200');
+  renderAll(plan, total, input);
+
+  let i = 0;
+  while (!withinBudget(total, input.budget) && i < MAX_ITER) {
+    i++;
+    trail(`⚠️ Over budget by Rs ${total - input.budget}. 🔄 Re-planning with cheaper substitutions (attempt ${i}/${MAX_ITER})…`, 'text-amber-300');
+    ({ model, plan } = await LLM.generateJSON(replanPrompt(input, plan, total), PLAN_SCHEMA));
+    ({ total } = validatePlan(plan));
+    trail(`🧮 New grocery total = Rs ${total}.`, 'text-slate-200');
+    renderAll(plan, total, input);
+  }
+
+  if (withinBudget(total, input.budget))
+    trail(`✅ Plan fits the budget! Final Rs ${total} — Rs ${input.budget - total} to spare.`, 'text-green-400 font-bold');
+  else
+    trail(`⚠️ Closest feasible after ${MAX_ITER} tries: Rs ${total}. Try a higher budget or fewer people.`, 'text-amber-300 font-bold');
+}
+
+/* ---------- 5. Rendering (XSS-safe via esc()) ---------- */
+function trail(msg, cls = 'text-slate-200') {
+  const ul = $('#trail');
+  if (ul.dataset.fresh !== '1') { ul.innerHTML = ''; ul.dataset.fresh = '1'; }
+  const li = document.createElement('li');
+  li.className = `trail-item ${cls}`;
+  li.textContent = msg; // textContent = inherently XSS-safe
+  ul.appendChild(li);
+  ul.scrollTop = ul.scrollHeight;
+}
+function resetOutput() {
+  $('#trail').dataset.fresh = '0';
+  ['#meals', '#grocery', '#subs'].forEach((s) => ($(s).innerHTML = ''));
+  ['#budgetCard', '#groceryCard', '#subsCard'].forEach((s) => $(s).classList.add('hidden'));
+}
+const MEAL_META = { breakfast: ['🌅', 'Breakfast'], lunch: ['☀️', 'Lunch'], dinner: ['🌙', 'Dinner'] };
+function renderAll(plan, total, input) {
+  renderMeals(plan.meals || {});
+  renderGrocery(plan.grocery || [], total);
+  renderSubs(plan.substitutions || []);
+  renderBudget(total, input.budget);
+}
+function renderMeals(meals) {
+  $('#meals').innerHTML = ['breakfast', 'lunch', 'dinner'].map((k) => {
+    const m = meals[k] || {};
+    const [icon, label] = MEAL_META[k];
+    const ings = (m.ingredients || []).map((x) => `<li>${esc(x)}</li>`).join('');
+    return `<article class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+      <div class="text-xs font-semibold text-green-700 uppercase tracking-wide">${icon} ${label}</div>
+      <h4 class="font-bold text-slate-800 mt-1 leading-snug">${esc(m.name || '—')}</h4>
+      <ul class="list-disc list-inside text-xs text-slate-600 mt-2 space-y-0.5">${ings}</ul>
+      <div class="flex gap-3 text-[11px] text-slate-500 mt-3 pt-3 border-t border-slate-100">
+        <span>⏱️ ${esc(m.prepTimeMin ?? '–')}m</span>
+        <span>🔥 ${esc(m.estCalories ?? '–')} kcal</span>
+        <span class="ml-auto font-semibold text-slate-700">Rs ${esc(m.estCost ?? '–')}</span>
+      </div></article>`;
+  }).join('');
+}
+function renderGrocery(items, total) {
+  $('#groceryCard').classList.remove('hidden');
+  $('#groceryTotal').textContent = `Rs ${total}`;
+  $('#grocery').innerHTML = items.map((g) =>
+    `<li class="flex justify-between py-1.5 gap-2">
+       <span><span class="font-medium">${esc(g.name)}</span>
+         <span class="text-slate-400">· ${esc(g.quantity || '')}</span></span>
+       <span class="font-semibold text-slate-700 whitespace-nowrap">Rs ${esc(Number(g.price) || 0)}</span>
+     </li>`).join('');
+}
+function renderSubs(subs) {
+  if (!subs.length) return;
+  $('#subsCard').classList.remove('hidden');
+  $('#subs').innerHTML = subs.map((s) =>
+    `<li class="border-l-2 border-amber-400 pl-3">
+       <div class="font-medium">${esc(s.original)} → <span class="text-green-700">${esc(s.swap)}</span>
+         ${s.savings ? `<span class="text-xs text-green-600">(saves Rs ${esc(s.savings)})</span>` : ''}</div>
+       <div class="text-xs text-slate-500">${esc(s.reason || '')}</div>
+     </li>`).join('');
+}
+function renderBudget(total, budget) {
+  $('#budgetCard').classList.remove('hidden');
+  const pct = Math.min(100, Math.round((total / Math.max(1, budget)) * 100));
+  const within = withinBudget(total, budget);
+  const meter = $('#meter');
+  meter.style.width = pct + '%';
+  meter.style.backgroundColor = within ? '#22c55e' : '#ef4444';
+  $('#budgetText').innerHTML = within
+    ? `<span class="text-green-700 font-bold">Rs ${total} / Rs ${budget} ✓ within budget</span>`
+    : `<span class="text-red-600 font-bold">Rs ${total} / Rs ${budget} — over by Rs ${total - budget}</span>`;
+}
+
+/* ---------- 6. Form wiring ---------- */
+const DIET_OPTIONS = ['Vegetarian', 'Non-veg', 'Vegan', 'Jain', 'High-protein', 'Low-carb'];
+function buildDietChips() {
+  $('#diets').innerHTML = DIET_OPTIONS.map((d) =>
+    `<button type="button" class="chip border border-slate-300 rounded-full px-3 py-1 text-sm hover:bg-slate-50"
+       data-diet="${d}" aria-pressed="false">${d}</button>`).join('');
+  $$('.chip').forEach((c) => c.addEventListener('click', () => {
+    const on = c.getAttribute('aria-pressed') === 'true';
+    c.setAttribute('aria-pressed', String(!on));
+    c.classList.toggle('bg-green-600', !on);
+    c.classList.toggle('text-white', !on);
+    c.classList.toggle('border-green-600', !on);
+  }));
+}
+function readInput() {
+  return {
+    day: $('#day').value.trim(),
+    people: Math.max(1, parseInt($('#people').value, 10) || 1),
+    budget: Math.max(1, parseInt($('#budget').value, 10) || 1),
+    prepTime: Math.max(5, parseInt($('#prep').value, 10) || 30),
+    diets: $$('.chip[aria-pressed="true"]').map((c) => c.dataset.diet)
+  };
+}
+function setLoading(on) {
+  $('#generate').disabled = on;
+  $('#genIcon').textContent = on ? '⏳' : '🤖';
+  $('#genIcon').className = on ? 'spin inline-block' : '';
+  $('#genLabel').textContent = on ? 'Agent working…' : 'Generate Plan';
+}
+
+/* ---------- Init ---------- */
+function init() {
+  buildDietChips();
+
+  // Key priority: local file (config.local.js) > previously saved (localStorage).
+  // The injected key is masked in the password field and never printed anywhere.
+  const injected = (window.COOKPILOT_GEMINI_KEY || '').trim();
+  if (injected && !/PASTE_YOUR/i.test(injected)) LLM.setKey(injected);
+  const saved = LLM.getKey();
+  if (saved) $('#apiKey').value = saved;
+  $('#saveKey').addEventListener('click', () => {
+    LLM.setKey($('#apiKey').value);
+    $('#saveKey').textContent = 'Saved ✓';
+    setTimeout(() => ($('#saveKey').textContent = 'Save'), 1500);
+  });
+
+  $('#demo').addEventListener('click', () => {
+    $('#day').value = 'Busy work-from-home day, gym in the evening. I want quick, high-protein vegetarian meals that keep me full.';
+    $('#people').value = 2; $('#budget').value = 400; $('#prep').value = 30;
+    $$('.chip').forEach((c) => {
+      const want = ['Vegetarian', 'High-protein'].includes(c.dataset.diet);
+      c.setAttribute('aria-pressed', String(want));
+      c.classList.toggle('bg-green-600', want); c.classList.toggle('text-white', want); c.classList.toggle('border-green-600', want);
+    });
+  });
+
+  $('#planForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = readInput();
+    if (!input.day) { $('#day').focus(); return; }
+    if (!LLM.getKey()) { trail('🔑 Add your Gemini API key (top-right) and click Save.', 'text-amber-300'); $('#apiKey').focus(); return; }
+    setLoading(true);
+    try { await runAgent(input); }
+    catch (err) { trail('❌ ' + (err.message || err), 'text-red-400'); }
+    finally { setLoading(false); }
+  });
+
+  if (location.hash === '#test') runSelfTests();
+}
+
+/* ---------- Pure-function self-tests (open index.html#test, see console) ---------- */
+function runSelfTests() {
+  const results = [];
+  const assert = (name, cond) => results.push((cond ? '✅ PASS' : '❌ FAIL') + ' — ' + name);
+
+  // validatePlan recomputes total and ignores the model's claimed totalCost
+  const p = { meals: { breakfast: { name: 'Poha' }, lunch: { name: 'Dal rice' }, dinner: { name: 'Roti sabzi' } },
+              grocery: [{ name: 'Rice', price: 60 }, { name: 'Dal', price: 40 }, { name: 'Veg', price: '50' }], totalCost: 999 };
+  const v = validatePlan(p);
+  assert('validatePlan sums prices (coerces strings)', v.total === 150);
+  assert('validatePlan ignores model totalCost', v.total !== 999);
+  assert('validatePlan ok when complete', v.ok === true);
+  assert('validatePlan flags missing meal', validatePlan({ meals: { breakfast: { name: 'X' } }, grocery: [{ price: 1 }] }).issues.includes('missing lunch'));
+  assert('validatePlan flags empty grocery', validatePlan({ meals: { breakfast: { name: 'A' }, lunch: { name: 'B' }, dinner: { name: 'C' } }, grocery: [] }).issues.includes('empty grocery list'));
+  assert('withinBudget true at boundary', withinBudget(400, 400) === true);
+  assert('withinBudget false when over', withinBudget(401, 400) === false);
+  assert('esc neutralizes script tag', esc('<script>') === '&lt;script&gt;');
+
+  console.log('%cCook-Pilot self-tests', 'font-weight:bold');
+  results.forEach((r) => console.log(r));
+  const failed = results.filter((r) => r.startsWith('❌')).length;
+  console.log(failed ? `${failed} test(s) failed` : 'All tests passed ✅');
+  trail(`🧪 Self-tests: ${results.length - failed}/${results.length} passed (see console).`, failed ? 'text-red-400' : 'text-green-400');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
