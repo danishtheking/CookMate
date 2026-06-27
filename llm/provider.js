@@ -1,5 +1,5 @@
 /**
- * CookMate LLM provider — one entry point, three possible backends:
+ * Smriti LLM provider — one entry point, three possible backends:
  *   • Claude API (Anthropic SDK)            — easiest: just an API key
  *   • Gemini via Google Vertex AI           — uses GCP credits (service-account OAuth)
  *   • Gemini Developer API                  — API key; does NOT use GCP credits
@@ -169,30 +169,33 @@ function toJsonSchema(node) {
   return out;
 }
 
-async function callClaude(prompt, schema) {
+async function callClaude(prompt, schema, opts = {}) {
   const client = anthropicClient();
+  // ANTHROPIC_MODEL (if set) is a hard override; otherwise honor the per-call model
+  // the route picked (fast for chat/next-action, smart for analysis), else the default.
+  const model = process.env.ANTHROPIC_MODEL || opts.model || CLAUDE_MODEL;
   // Forced tool use = reliable structured output across every Claude model.
   // NOTE: no `temperature` — it 400s on Opus 4.8 / 4.7. Steer via the prompt.
   const msg = await client.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 4096,
+    model,
+    max_tokens: opts.maxTokens || 4096,   // tight ceilings per route keep latency + cost down
     tools: [{
-      name: 'emit_cooking_plan',
-      description: 'Return the structured cooking plan as JSON matching the schema.',
+      name: 'emit_structured_output',
+      description: 'Return the result as JSON matching the provided schema.',
       input_schema: toJsonSchema(schema)
     }],
-    tool_choice: { type: 'tool', name: 'emit_cooking_plan' },
+    tool_choice: { type: 'tool', name: 'emit_structured_output' },
     messages: [{ role: 'user', content: prompt }]
   });
   const tool = (msg.content || []).find(b => b.type === 'tool_use');
   if (!tool) throw new Error('claude: model returned no structured output');
-  return { provider: 'claude', model: CLAUDE_MODEL, plan: tool.input };
+  return { provider: 'claude', model, plan: tool.input };
 }
 
 /* ---------------- public API ---------------- */
 async function generatePlan(prompt, schema, opts = {}) {
   const p = activeProvider();
-  if (p === 'claude')    return callClaude(prompt, schema);
+  if (p === 'claude')    return callClaude(prompt, schema, opts);
   if (p === 'vertex')    return callVertex(prompt, schema, opts.temperature);
   if (p === 'developer') return callDeveloper(prompt, schema, opts.temperature);
   throw new Error('No LLM provider configured. Set ANTHROPIC_API_KEY (Claude), Vertex creds (GCP credits), or GEMINI_API_KEY in .env — see README.');
