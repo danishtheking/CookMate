@@ -1,83 +1,101 @@
-# Cook-Pilot 🍳 — Agentic Cooking To-Do List
+# Smriti 🌙 — a voice-first wellbeing companion for exam students
 
-> Hack2Skill · PromptWars (Build with AI). A simple AI micro-app that turns *your day*
-> into a personal cooking to-do list — and an **agent that re-plans itself until it fits
-> your budget**.
+> **Hack2Skill · PromptWars (Build with AI)** — Challenge: *Mental Wellness Tracker.*
+> Smriti helps students preparing for high-stakes exams (NEET, JEE, CUET, CAT, GATE, UPSC)
+> monitor and improve their mental wellbeing — by **talking or journaling**, and letting
+> GenAI surface the **hidden stress triggers a normal mood tracker misses**.
 
-**Live demo:** open `index.html` in any browser. No install, no build, no server.
+**Run:** `npm install && npm start` → open the printed URL. Mobile-first, but fully responsive to laptop/desktop.
 
 ---
 
-## What it does (maps 1:1 to the challenge)
+## How it maps to the challenge
 
-The challenge asks for a structured meal-planning flow producing four things. Cook-Pilot
-delivers all four:
-
-| Required output | In the app |
+| The brief asks for… | In Smriti |
 |---|---|
-| **Breakfast / Lunch / Dinner plan** | Three meal cards (dish, ingredients, prep time, calories, cost) |
-| **Grocery list** | Aggregated list with quantities + realistic ₹ prices and a running total |
-| **Substitutions** | The agent logs every swap it makes (e.g. paneer → tofu) with the ₹ saved |
-| **Budget feasibility logic** | A live budget meter + a **self-correcting agent loop** (below) |
+| Analyze **open-ended daily journaling & mood logs** | Free-text check-in → Claude returns a mood score, label, and a warm reflection. |
+| Uncover **hidden stress triggers & patterns standard trackers miss** | Every entry is mined for the *real underlying causes* (parental expectation, social comparison, sleep loss, self-doubt) **with an evidence quote** — this is the product's spine. |
+| **Conversational AI** for support | Two real modalities: a **voice companion** (AssemblyAI Voice Agent, real-time with barge-in) and a **text chat** (Claude), sharing one persona. |
+| **Hyper-personalized, contextual** support | The chat is fed the student's mood, recent triggers, tasks and reflection, so Smriti references what they actually journaled. |
+| **Real-time tailored coping strategies** | Each analysis ends with one concrete coping step + a **“Start a 60-second breath →”** button. |
+| **Adaptive mindfulness exercises** | A dedicated **Breathe** view with guided box / 4-7-8 / calm breathing; the journal insight & crisis banner deep-link into the technique best suited to the student's state. |
+| **Motivational encouragement** | A daily **“next move”** coach turns mood + tasks + calendar into one kind, doable suggestion. |
+| **Safe, empathetic, always-available companion** | Validate-first persona, never diagnoses, a `none → low → elevated → crisis` risk taxonomy, and **Tele-MANAS 14416** (India's free 24×7 line) always one tap away. |
 
-You describe your day ("busy WFH day, gym in the evening, high-protein veg"), set people,
-₹ budget, prep-time limit and diet — and the agent does the rest.
+The signature moment: a student says *“I bombed my mock test”* and Smriti surfaces the trigger
+underneath — *fear of disappointing family* — not just the surface sadness. There's also an
+agentic **“Wrap up”** that turns any conversation into the day's journal **and** the to-dos
+the student mentioned, then plots mood-coloured history on a calendar.
 
-## The agentic feature (our differentiator)
+## Features
 
-It is a real **observe → decide → act → verify** loop, not a single prompt:
+- **Companion** — voice (AssemblyAI) + text (Claude), personalized by journal context.
+- **Journal** — write a check-in → mood, hidden triggers (with evidence), summary, coping step, safety risk.
+- **Breathe** — interactive, adaptive guided breathing (box / 4-7-8 / calm).
+- **Tasks** — add / complete, with due dates; auto-extracted from conversations.
+- **Calendar** — month view with mood-coloured dots; tap any day to revisit that check-in.
+- **Home** — a one-line AI “next move”, quick actions, today's mood/tasks, and a mood trend.
 
-1. **Plan** — Gemini returns a structured B/L/D plan + grocery list (strict JSON schema).
-2. **Verify (deterministic)** — our own JS recomputes the grocery total. We **never trust
-   the model's arithmetic** — this is the budget-feasibility check.
-3. **Decide** — if `total > budget`, the agent decides it must re-plan.
-4. **Act** — it calls Gemini again, asking for cheaper substitutions, and records each swap.
-5. **Loop** — up to 3 times until it fits (or it reports the closest-feasible plan).
+## Architecture
 
-The **Agent Activity Trail** streams every step on screen, so judges literally watch it
-notice it's over budget and fix itself.
+```
+Browser (index.html — one SPA, no build)
+  · Tailwind (CDN) + Geist · light theme · responsive (mobile → desktop sidebar)
+  · localStorage for all user data (no mock data; real entries only)
+  · AssemblyAI voice over a single WebSocket (mic → PCM16 → token-authed)
+        │  /api/*  (same origin)
+        ▼
+server.js (Express proxy — keeps every key server-side)
+  · /api/analyze, /api/chat, /api/next-action, /api/session-summary  → Claude
+  · /api/voice-token  → mints a short-lived AssemblyAI token (key never ships to client)
+  · helmet + per-route rate-limiting + input-size caps
+        │
+        ▼
+llm/provider.js (one entry point)
+  · Claude (Anthropic SDK, forced-tool structured output) — primary
+  · Gemini via Vertex AI / Developer API — automatic fallback
+  · per-task model routing: Haiku for chat/next-action, Sonnet for analysis
+```
 
-## Reuse from `siela` (my existing AI assistant)
-
-Siela is a Node/Express WhatsApp assistant. It's a backend, so I adapted its **proven
-patterns**, not its files:
-
-- **`src/services/llm-provider.js`** → the `LLM` module here: one source of truth for every
-  model call, with a **fallback chain** (`gemini-2.5-flash` → `gemini-2.0-flash`). Siela
-  validated Gemini Flash as the right model for speed + structured output.
-- **`src/utils/llm-output-validator.js`** → `validatePlan()`: siela's principle that LLM
-  output is *never* committed blindly — suspicious output is a signal to fall back. Here we
-  recompute the budget ourselves and drive the re-plan loop from it.
-
-## How it scores against the judging rubric
-
-| Criterion (weight) | What we did |
-|---|---|
-| **Code Quality** (High) | Modular JS — `LLM` / `validatePlan` / `runAgent` / render — JSDoc, clear naming, this README |
-| **Problem Statement Alignment** (High) | All four required outputs + the agentic budget loop *is* the feasibility logic |
-| **Security** (Med) | API key in a password field + `localStorage` (never hardcoded/committed); `esc()` escapes **all** model output before render (XSS); no `eval`; numeric input clamping |
-| **Efficiency** (Med) | Fast Flash model; loop **capped at 3** iterations with early-exit; single lightweight file; concise prompts |
-| **Testing** (Low) | Pure functions (`validatePlan`, `withinBudget`, `esc`) with inline self-tests — open `index.html#test` and check the console |
-| **Accessibility** (Low) | Semantic HTML, `<label for>`, `aria-live` agent trail (announced to screen readers), `role="status"` budget, visible focus styles, keyboard-operable |
+**Security by design:** no API key ever reaches the browser — the server proxies every
+model call and mints a 300-second AssemblyAI token. `.env` is git-ignored; `index.html` is
+the only file served (no `express.static`); all model/user text is HTML-escaped before render.
 
 ## Run it
 
-1. Get a free Gemini key: https://aistudio.google.com/apikey
-2. Open `index.html` in a browser.
-3. Paste the key (top-right) → **Save**.
-4. Click **Load demo** (budget is intentionally tight) → **Generate Plan**.
-5. Watch the Agent Activity Trail re-plan until it's within budget.
+```bash
+npm install
+cp .env.example .env          # then fill in the keys
+npm start                     # → http://localhost:5599
+```
 
-**Run the tests:** open `index.html#test` → results print to the browser console (and a
-summary line in the trail).
+Minimum to run: `ANTHROPIC_API_KEY` (the AI brain). Add `ASSEMBLYAI_API_KEY` to enable the
+voice companion — without it, text chat still works fully. See `.env.example`.
 
-## Security note
+## Test
 
-The key lives only in your browser (`localStorage`) and calls Gemini directly — fine for a
-demo. For production, proxy calls through a small backend so the key never reaches the
-client (this is exactly what siela's `llm-provider.js` does server-side).
+```bash
+npm test            # Node's built-in runner — no extra dependencies
+```
+
+Covers the provider's pure seam: the Gemini→JSON-Schema converter (`toJsonSchema`) and the
+env-driven provider resolution (`activeProvider`, `claudeConfigured`).
+
+## How it scores against the rubric
+
+| Parameter (weight) | What we did |
+|---|---|
+| **Code Quality** (High) | One clean SPA + a thin, schema-driven Express proxy + a documented provider abstraction; `esc()` discipline throughout; a real README and tests. |
+| **Problem-Statement Alignment** (High) | Hidden-trigger discovery, dual-modality conversational AI, adaptive breathing, context-aware chat, and a concrete India-specific safety layer. |
+| **Security** (Med) | Keys strictly server-side + short-lived voice token; helmet headers; per-route rate limiting; input-size caps; generic client errors; HTML-escaped output. |
+| **Efficiency** (Med) | Per-task model routing (Haiku for short replies, Sonnet for analysis) with tight token ceilings; off-thread audio pipeline; bounded payloads. |
+| **Testing** (Low) | `npm test` over the importable provider seam (schema converter + provider resolution). |
+| **Accessibility** (Low) | Semantic landmarks, `aria-live` for AI/voice/crisis output, `aria-current`/`aria-checked` state, AA-contrast text, `prefers-reduced-motion`, full keyboard + typed fallback. |
 
 ## Tech
 
-Single `index.html` · vanilla JS · Tailwind (CDN) · Gemini 2.5 Flash with
-`responseSchema` structured output.
+Single `index.html` (vanilla JS, Tailwind CDN, Geist) · Node/Express proxy ·
+Claude (Anthropic) with forced-tool structured output · AssemblyAI Voice Agent API.
+
+> Smriti is a supportive companion, not a medical device, and does not provide diagnosis or
+> crisis treatment. In distress, contact **Tele-MANAS 14416** or **iCall 9152987821** (India, free).
