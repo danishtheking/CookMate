@@ -1,7 +1,18 @@
-# Local secrets — never commit your API key
+# ── Secrets — never commit ──
+.env
+.env.*
+!.env.example
 config.local.js
+# GCP service-account keys
+*service-account*.json
+*sa-key*.json
+gcp-*.json
+credentials*.json
 
-# Tooling / OS
+# ── Dependencies ──
+node_modules/
+
+# ── Tooling / OS ──
 .claude/
 __pycache__/
 *.pyc

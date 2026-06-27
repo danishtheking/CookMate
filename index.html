@@ -3,88 +3,110 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cook-Pilot 🍳 — Agentic Cooking To-Do List</title>
+  <title>CookMate 🍳 — Agentic Cooking To-Do List</title>
   <meta name="description" content="An agentic AI that turns your day into a Breakfast/Lunch/Dinner plan, grocery list, substitutions, and a budget that actually fits — powered by Gemini." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Brand theme derived from the reference: warm charcoal + amber-gold + serif display.
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#0F0E0C', surface: '#1A1816', surface2: '#221F19', line: '#2E2A22',
+            gold: '#E9A23B', golddim: '#C98A2E', cream: '#F3ECE0', muted: '#9A9286', bad: '#E8705B'
+          },
+          fontFamily: {
+            serif: ['"Playfair Display"', 'Georgia', 'serif'],
+            sans:  ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    :root { color-scheme: light; }
-    body { font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; }
-    /* Visible keyboard focus for accessibility */
-    :focus-visible { outline: 3px solid #16a34a; outline-offset: 2px; border-radius: 6px; }
+    :root { color-scheme: dark; }
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      min-height: 100vh;
+      background:
+        radial-gradient(1100px 560px at 82% -12%, rgba(233,162,59,0.12), transparent 60%),
+        radial-gradient(820px 460px at -8% 18%, rgba(233,162,59,0.06), transparent 55%),
+        #0F0E0C;
+    }
+    :focus-visible { outline: 2px solid #E9A23B; outline-offset: 2px; border-radius: 8px; }
     .trail-item { animation: fade 0.25s ease-out; }
     @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-    .spin { animation: spin 0.8s linear infinite; }
+    .spin { animation: spin 0.8s linear infinite; display: inline-block; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .meter-bar { transition: width 0.5s ease, background-color 0.3s ease; }
+    #trail::-webkit-scrollbar { width: 6px; }
+    #trail::-webkit-scrollbar-thumb { background: #3a352b; border-radius: 3px; }
   </style>
 </head>
-<body class="bg-gradient-to-br from-orange-50 via-amber-50 to-green-50 min-h-screen text-slate-800">
+<body class="text-cream">
 
   <!-- ===================== HEADER ===================== -->
-  <header class="bg-gradient-to-r from-orange-500 to-green-600 text-white shadow-lg">
-    <div class="max-w-6xl mx-auto px-5 py-5 flex flex-wrap items-center justify-between gap-3">
+  <header class="relative overflow-hidden border-b border-line/70">
+    <img src="assets/hero.jpg" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover object-center" />
+    <div class="absolute inset-0" style="background: linear-gradient(90deg,#0F0E0C 20%, rgba(15,14,12,0.74) 52%, rgba(15,14,12,0.40) 100%), linear-gradient(0deg,#0F0E0C 2%, transparent 60%)"></div>
+    <div class="relative max-w-6xl mx-auto px-5 py-12 sm:py-16 flex flex-wrap items-end justify-between gap-5">
       <div>
-        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Cook-Pilot 🍳</h1>
-        <p class="text-white/90 text-sm">Agentic cooking to-do list — it plans, checks your budget, and <em>re-plans itself</em> until it fits.</p>
-      </div>
-      <!-- API key bar: never hardcoded; stored only in this browser (localStorage) -->
-      <div class="flex items-end gap-2">
-        <label class="text-xs text-white/90 flex flex-col">
-          <span class="mb-1">Gemini API key <span class="opacity-75">(stays in your browser)</span></span>
-          <input id="apiKey" type="password" autocomplete="off" placeholder="Paste AI Studio key…"
-                 class="text-slate-800 rounded-md px-3 py-2 text-sm w-56 border border-white/40" />
-        </label>
-        <button id="saveKey" class="bg-white text-green-700 font-semibold text-sm rounded-md px-3 py-2 hover:bg-green-50">Save</button>
+        <p class="text-[11px] uppercase tracking-[0.28em] text-gold mb-2">Agentic Meal Planner</p>
+        <h1 class="font-serif text-4xl sm:text-6xl font-bold tracking-tight leading-none">Cook<span class="text-gold">Mate</span></h1>
+        <p class="text-cream/70 text-sm sm:text-base mt-3 max-w-md">It plans your day, checks your budget, and re-plans itself until the groceries fit.</p>
       </div>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-5 py-6 grid lg:grid-cols-5 gap-6">
+  <main class="max-w-6xl mx-auto px-5 py-7 grid lg:grid-cols-5 gap-6">
 
     <!-- ===================== INPUT PANEL ===================== -->
-    <section aria-labelledby="planTitle" class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-5 h-fit">
-      <h2 id="planTitle" class="text-lg font-bold mb-4 flex items-center gap-2">📝 Tell me about your day</h2>
+    <section aria-labelledby="planTitle" class="lg:col-span-2 bg-surface rounded-3xl border border-line p-6 h-fit shadow-2xl shadow-black/40">
+      <h2 id="planTitle" class="font-serif text-2xl font-semibold mb-6 flex items-center gap-3"><span class="inline-block w-1 h-6 bg-gold rounded-full"></span>Tell me about your day</h2>
 
       <form id="planForm" class="space-y-4">
         <div>
-          <label for="day" class="block text-sm font-medium mb-1">Your day</label>
+          <label for="day" class="block text-sm font-medium mb-1.5 text-cream/80">Your day</label>
           <textarea id="day" rows="3" required
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500"
+            class="w-full rounded-xl bg-ink border border-line px-3 py-2.5 text-sm text-cream placeholder:text-muted/50 focus:border-gold"
             placeholder="e.g. Busy work-from-home day, gym in the evening. Want quick, high-protein vegetarian meals."></textarea>
         </div>
 
         <div class="grid grid-cols-3 gap-3">
           <div>
-            <label for="people" class="block text-sm font-medium mb-1">People</label>
+            <label for="people" class="block text-sm font-medium mb-1.5 text-cream/80">People</label>
             <input id="people" type="number" min="1" max="20" value="2"
-                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500" />
+                   class="w-full rounded-xl bg-ink border border-line px-3 py-2.5 text-sm text-cream focus:border-gold" />
           </div>
           <div>
-            <label for="budget" class="block text-sm font-medium mb-1">Budget ₹/day</label>
+            <label for="budget" class="block text-sm font-medium mb-1.5 text-cream/80">Budget ₹/day</label>
             <input id="budget" type="number" min="1" step="10" value="400"
-                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500" />
+                   class="w-full rounded-xl bg-ink border border-line px-3 py-2.5 text-sm text-cream focus:border-gold" />
           </div>
           <div>
-            <label for="prep" class="block text-sm font-medium mb-1">Max mins/meal</label>
+            <label for="prep" class="block text-sm font-medium mb-1.5 text-cream/80">Max mins/meal</label>
             <input id="prep" type="number" min="5" max="180" step="5" value="30"
-                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500" />
+                   class="w-full rounded-xl bg-ink border border-line px-3 py-2.5 text-sm text-cream focus:border-gold" />
           </div>
         </div>
 
         <fieldset>
-          <legend class="block text-sm font-medium mb-2">Dietary preferences</legend>
+          <legend class="block text-sm font-medium mb-2 text-cream/80">Dietary preferences</legend>
           <div id="diets" class="flex flex-wrap gap-2" role="group" aria-label="Dietary preferences"></div>
         </fieldset>
 
         <div class="flex gap-2 pt-1">
           <button type="submit" id="generate"
-            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 disabled:opacity-60">
-            <span id="genIcon">🤖</span> <span id="genLabel">Generate Plan</span>
+            class="flex-1 bg-gold hover:bg-golddim text-ink font-semibold rounded-full px-4 py-3 flex items-center justify-center gap-2 transition disabled:opacity-60">
+            <span id="genSpin" class="hidden h-4 w-4 rounded-full border-2 border-ink/30 border-t-ink spin"></span><span id="genLabel">Generate Plan</span>
           </button>
           <button type="button" id="demo"
-            class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold rounded-lg px-4 py-2.5">Load demo</button>
+            class="border border-gold/60 text-gold hover:bg-gold/10 font-semibold rounded-full px-4 py-3 transition">Load demo</button>
         </div>
-        <p class="text-xs text-slate-500">Tip for judges/demo: the default ₹400 budget is intentionally tight, so you can watch the agent re-plan itself.</p>
+        <p class="text-xs text-muted">Tip for judges/demo: the default ₹400 budget is intentionally tight, so you can watch the agent re-plan itself.</p>
       </form>
     </section>
 
@@ -93,25 +115,25 @@
       <h2 id="outTitle" class="sr-only">Your cooking plan</h2>
 
       <!-- Agent activity trail (a live region: screen readers announce each step) -->
-      <div class="bg-slate-900 text-slate-100 rounded-2xl shadow-sm p-4">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="font-bold text-sm tracking-wide text-green-400">⚙️ AGENT ACTIVITY TRAIL</h3>
-          <span class="text-[11px] text-slate-400">observe → decide → act → verify</span>
+      <div class="bg-[#0B0A08] border border-line rounded-3xl p-5 shadow-2xl shadow-black/40">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-xs tracking-[0.22em] text-gold flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gold animate-pulse"></span>AGENT ACTIVITY TRAIL</h3>
+          <span class="text-[11px] text-muted">observe → decide → act → verify</span>
         </div>
         <ul id="trail" aria-live="polite" aria-label="Agent activity log"
-            class="space-y-1.5 text-sm font-mono min-h-[3rem] max-h-60 overflow-auto">
-          <li class="text-slate-500">Idle. Add your key, describe your day, and hit Generate.</li>
+            class="space-y-1.5 text-sm font-mono min-h-[3rem] max-h-60 overflow-auto text-cream/80">
+          <li class="text-muted">Idle — add your key, describe your day, and hit Generate.</li>
         </ul>
       </div>
 
       <!-- Budget meter -->
-      <div id="budgetCard" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-4" role="status" aria-live="polite">
-        <div class="flex items-center justify-between mb-2 text-sm font-medium">
+      <div id="budgetCard" class="hidden bg-surface border border-line rounded-3xl p-5" role="status" aria-live="polite">
+        <div class="flex items-center justify-between mb-2 text-sm font-medium text-cream/90">
           <span>Budget feasibility</span>
           <span id="budgetText"></span>
         </div>
-        <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
-          <div id="meter" class="meter-bar h-3 rounded-full bg-green-500" style="width:0%"></div>
+        <div class="w-full bg-line rounded-full h-3 overflow-hidden">
+          <div id="meter" class="meter-bar h-3 rounded-full bg-gold" style="width:0%"></div>
         </div>
       </div>
 
@@ -120,20 +142,20 @@
 
       <!-- Grocery + substitutions -->
       <div class="grid sm:grid-cols-2 gap-4">
-        <div id="groceryCard" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-          <h3 class="font-bold mb-2 flex items-center gap-2">🛒 Grocery list <span id="groceryTotal" class="ml-auto text-green-700 font-extrabold"></span></h3>
-          <ul id="grocery" class="text-sm divide-y divide-slate-100"></ul>
+        <div id="groceryCard" class="hidden bg-surface border border-line rounded-3xl p-5">
+          <h3 class="font-serif text-lg mb-3 flex items-center gap-3"><span class="inline-block w-1 h-5 bg-gold rounded-full"></span>Grocery list <span id="groceryTotal" class="ml-auto text-gold font-bold text-xl"></span></h3>
+          <ul id="grocery" class="text-sm divide-y divide-line"></ul>
         </div>
-        <div id="subsCard" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-          <h3 class="font-bold mb-2 flex items-center gap-2">🔄 Substitutions the agent made</h3>
+        <div id="subsCard" class="hidden bg-surface border border-line rounded-3xl p-5">
+          <h3 class="font-serif text-lg mb-3 flex items-center gap-3"><span class="inline-block w-1 h-5 bg-gold rounded-full"></span>Substitutions the agent made</h3>
           <ul id="subs" class="text-sm space-y-2"></ul>
         </div>
       </div>
     </section>
   </main>
 
-  <footer class="max-w-6xl mx-auto px-5 pb-8 text-center text-xs text-slate-400">
-    Cook-Pilot — built for Hack2Skill PromptWars · Gemini 2.5 Flash · LLM-provider &amp; output-validation patterns adapted from the <strong>siela</strong> assistant.
+  <footer class="max-w-6xl mx-auto px-5 pb-10 text-center text-xs text-muted">
+    CookMate — built for Hack2Skill PromptWars · Gemini 2.5 Flash · LLM-provider &amp; output-validation patterns adapted from the <span class="text-gold/80">siela</span> assistant.
   </footer>
 
 <!-- Optional LOCAL key file (config.local.js) — git-ignored, never committed.
@@ -141,7 +163,7 @@
 <script src="config.local.js" onerror="window.__noKeyFile = 1"></script>
 <script>
 /* =================================================================================
-   Cook-Pilot — Agentic Cooking To-Do List
+   CookMate — Agentic Cooking To-Do List
    ---------------------------------------------------------------------------------
    Architecture (patterns adapted from the `siela` WhatsApp assistant):
      1. LLM          — provider abstraction with a model fallback chain.
@@ -167,39 +189,34 @@ const MAX_ITER = 3; // cap the agent loop — efficiency + guaranteed terminatio
 
 /* ---------- 1. LLM provider (adapted from siela's llm-provider.js) ---------- */
 const LLM = (() => {
-  // siela defaults to gemini-3-flash-preview; we use the GA Flash chain for
-  // reliable structured output. Swap the first entry if your key has 3-flash.
-  const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
-  const endpoint = (m) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+  // CookMate calls its OWN backend (/api/plan), which talks to Gemini via
+  // Vertex AI — so spend draws from GCP credits and the service-account creds
+  // stay SERVER-SIDE, never in the browser. See server.js + llm/provider.js.
+  let _status = { provider: 'unknown', usesGcpCredits: false };
 
-  const getKey = () => (localStorage.getItem('cookpilot_gemini_key') || '').trim();
-  const setKey = (k) => localStorage.setItem('cookpilot_gemini_key', (k || '').trim());
-
-  /** Ask Gemini for JSON matching `schema`. Tries each model in order (fallback). */
-  async function generateJSON(prompt, schema, { temperature = 0.7 } = {}) {
-    const key = getKey();
-    if (!key) throw new Error('Add your Gemini API key (top-right) first.');
-    let lastErr;
-    for (const model of MODELS) {
-      try {
-        const res = await fetch(`${endpoint(model)}?key=${encodeURIComponent(key)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: 'application/json', responseSchema: schema, temperature }
-          })
-        });
-        if (!res.ok) { lastErr = new Error(`${model}: HTTP ${res.status} ${(await res.text()).slice(0, 160)}`); continue; }
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) { lastErr = new Error(`${model}: empty response`); continue; }
-        return { model, plan: JSON.parse(text) };
-      } catch (e) { lastErr = e; }
-    }
-    throw lastErr || new Error('All models failed');
+  /** Ask which provider the backend is on (vertex = GCP credits). */
+  async function refreshStatus() {
+    try { _status = await (await fetch('/api/health')).json(); }
+    catch { _status = { provider: 'unknown', usesGcpCredits: false }; }
+    return _status;
   }
-  return { getKey, setKey, generateJSON, MODELS };
+  const status = () => _status;
+  // Kept so existing UI code keeps working; the real credential is server-side.
+  const getKey = () => 'server';
+  const setKey = () => {};
+
+  /** Ask the backend for JSON matching `schema`. Returns { model, plan, provider }. */
+  async function generateJSON(prompt, schema, { temperature = 0.7 } = {}) {
+    const res = await fetch('/api/plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, schema, temperature })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return { model: data.model, plan: data.plan, provider: data.provider };
+  }
+  return { getKey, setKey, generateJSON, status, refreshStatus };
 })();
 
 /* ---------- 2. Structured-output schema (Gemini responseSchema) ---------- */
@@ -277,32 +294,32 @@ const withinBudget = (total, budget) => total <= budget; // pure, testable
 /* ---------- 4. The agentic loop: observe -> decide -> act -> verify ---------- */
 async function runAgent(input) {
   resetOutput();
-  trail(`🧠 Planning Breakfast, Lunch & Dinner for ${input.people} ${input.people > 1 ? 'people' : 'person'} on a Rs ${input.budget} budget…`, 'text-green-300');
+  trail(`› Planning breakfast, lunch and dinner for ${input.people} ${input.people > 1 ? 'people' : 'person'} on a ₹${input.budget} budget`, 'text-cream/70');
 
   let { model, plan } = await LLM.generateJSON(planPrompt(input), PLAN_SCHEMA);
   let { ok, issues, total } = validatePlan(plan);
-  if (!ok) trail(`⚠️ Output check flagged: ${issues.join(', ')} — continuing with best effort.`, 'text-amber-300');
-  trail(`🧮 Drafted via ${model}. Grocery total = Rs ${total} · budget Rs ${input.budget}.`, 'text-slate-200');
+  if (!ok) trail(`› Output check flagged: ${issues.join(', ')} — continuing with best effort`, 'text-amber-400');
+  trail(`› Drafted via ${model} — grocery total ₹${total}, budget ₹${input.budget}`, 'text-cream/60');
   renderAll(plan, total, input);
 
   let i = 0;
   while (!withinBudget(total, input.budget) && i < MAX_ITER) {
     i++;
-    trail(`⚠️ Over budget by Rs ${total - input.budget}. 🔄 Re-planning with cheaper substitutions (attempt ${i}/${MAX_ITER})…`, 'text-amber-300');
+    trail(`› Over budget by ₹${total - input.budget} — re-planning with cheaper substitutions (attempt ${i}/${MAX_ITER})`, 'text-amber-400');
     ({ model, plan } = await LLM.generateJSON(replanPrompt(input, plan, total), PLAN_SCHEMA));
     ({ total } = validatePlan(plan));
-    trail(`🧮 New grocery total = Rs ${total}.`, 'text-slate-200');
+    trail(`› New grocery total ₹${total}`, 'text-cream/60');
     renderAll(plan, total, input);
   }
 
   if (withinBudget(total, input.budget))
-    trail(`✅ Plan fits the budget! Final Rs ${total} — Rs ${input.budget - total} to spare.`, 'text-green-400 font-bold');
+    trail(`✓ Plan fits the budget — final ₹${total}, ₹${input.budget - total} to spare`, 'text-emerald-400 font-semibold');
   else
-    trail(`⚠️ Closest feasible after ${MAX_ITER} tries: Rs ${total}. Try a higher budget or fewer people.`, 'text-amber-300 font-bold');
+    trail(`! Closest feasible after ${MAX_ITER} tries: ₹${total}. Try a higher budget or fewer people.`, 'text-amber-400 font-semibold');
 }
 
 /* ---------- 5. Rendering (XSS-safe via esc()) ---------- */
-function trail(msg, cls = 'text-slate-200') {
+function trail(msg, cls = 'text-cream/80') {
   const ul = $('#trail');
   if (ul.dataset.fresh !== '1') { ul.innerHTML = ''; ul.dataset.fresh = '1'; }
   const li = document.createElement('li');
@@ -316,7 +333,7 @@ function resetOutput() {
   ['#meals', '#grocery', '#subs'].forEach((s) => ($(s).innerHTML = ''));
   ['#budgetCard', '#groceryCard', '#subsCard'].forEach((s) => $(s).classList.add('hidden'));
 }
-const MEAL_META = { breakfast: ['🌅', 'Breakfast'], lunch: ['☀️', 'Lunch'], dinner: ['🌙', 'Dinner'] };
+const MEAL_META = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 function renderAll(plan, total, input) {
   renderMeals(plan.meals || {});
   renderGrocery(plan.grocery || [], total);
@@ -326,37 +343,38 @@ function renderAll(plan, total, input) {
 function renderMeals(meals) {
   $('#meals').innerHTML = ['breakfast', 'lunch', 'dinner'].map((k) => {
     const m = meals[k] || {};
-    const [icon, label] = MEAL_META[k];
+    const label = MEAL_META[k];
     const ings = (m.ingredients || []).map((x) => `<li>${esc(x)}</li>`).join('');
-    return `<article class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-      <div class="text-xs font-semibold text-green-700 uppercase tracking-wide">${icon} ${label}</div>
-      <h4 class="font-bold text-slate-800 mt-1 leading-snug">${esc(m.name || '—')}</h4>
-      <ul class="list-disc list-inside text-xs text-slate-600 mt-2 space-y-0.5">${ings}</ul>
-      <div class="flex gap-3 text-[11px] text-slate-500 mt-3 pt-3 border-t border-slate-100">
-        <span>⏱️ ${esc(m.prepTimeMin ?? '–')}m</span>
-        <span>🔥 ${esc(m.estCalories ?? '–')} kcal</span>
-        <span class="ml-auto font-semibold text-slate-700">Rs ${esc(m.estCost ?? '–')}</span>
+    return `<article class="bg-surface rounded-2xl border border-line p-5 hover:border-gold/40 transition">
+      <div class="text-[10px] font-semibold text-gold/90 uppercase tracking-[0.2em]">${label}</div>
+      <h4 class="font-serif text-lg text-cream mt-2 leading-snug">${esc(m.name || '—')}</h4>
+      <ul class="list-disc list-inside text-xs text-muted mt-2.5 space-y-1 marker:text-gold/50">${ings}</ul>
+      <div class="flex items-center text-[11px] text-muted mt-4 pt-3 border-t border-line">
+        <span>${esc(m.prepTimeMin ?? '–')} min</span>
+        <span class="mx-2 opacity-40">·</span>
+        <span>${esc(m.estCalories ?? '–')} kcal</span>
+        <span class="ml-auto font-semibold text-gold text-sm">₹${esc(m.estCost ?? '–')}</span>
       </div></article>`;
   }).join('');
 }
 function renderGrocery(items, total) {
   $('#groceryCard').classList.remove('hidden');
-  $('#groceryTotal').textContent = `Rs ${total}`;
+  $('#groceryTotal').textContent = `₹${total}`;
   $('#grocery').innerHTML = items.map((g) =>
     `<li class="flex justify-between py-1.5 gap-2">
-       <span><span class="font-medium">${esc(g.name)}</span>
-         <span class="text-slate-400">· ${esc(g.quantity || '')}</span></span>
-       <span class="font-semibold text-slate-700 whitespace-nowrap">Rs ${esc(Number(g.price) || 0)}</span>
+       <span><span class="font-medium text-cream/90">${esc(g.name)}</span>
+         <span class="text-muted">· ${esc(g.quantity || '')}</span></span>
+       <span class="font-semibold text-cream whitespace-nowrap">₹${esc(Number(g.price) || 0)}</span>
      </li>`).join('');
 }
 function renderSubs(subs) {
   if (!subs.length) return;
   $('#subsCard').classList.remove('hidden');
   $('#subs').innerHTML = subs.map((s) =>
-    `<li class="border-l-2 border-amber-400 pl-3">
-       <div class="font-medium">${esc(s.original)} → <span class="text-green-700">${esc(s.swap)}</span>
-         ${s.savings ? `<span class="text-xs text-green-600">(saves Rs ${esc(s.savings)})</span>` : ''}</div>
-       <div class="text-xs text-slate-500">${esc(s.reason || '')}</div>
+    `<li class="border-l-2 border-gold pl-3">
+       <div class="font-medium text-cream/90">${esc(s.original)} → <span class="text-gold">${esc(s.swap)}</span>
+         ${s.savings ? `<span class="text-xs text-gold/80">(saves ₹${esc(s.savings)})</span>` : ''}</div>
+       <div class="text-xs text-muted">${esc(s.reason || '')}</div>
      </li>`).join('');
 }
 function renderBudget(total, budget) {
@@ -365,24 +383,24 @@ function renderBudget(total, budget) {
   const within = withinBudget(total, budget);
   const meter = $('#meter');
   meter.style.width = pct + '%';
-  meter.style.backgroundColor = within ? '#22c55e' : '#ef4444';
+  meter.style.backgroundColor = within ? '#E9A23B' : '#E8705B';
   $('#budgetText').innerHTML = within
-    ? `<span class="text-green-700 font-bold">Rs ${total} / Rs ${budget} ✓ within budget</span>`
-    : `<span class="text-red-600 font-bold">Rs ${total} / Rs ${budget} — over by Rs ${total - budget}</span>`;
+    ? `<span class="text-gold font-bold">₹${total} / ₹${budget} ✓ within budget</span>`
+    : `<span class="text-bad font-bold">₹${total} / ₹${budget} — over by ₹${total - budget}</span>`;
 }
 
 /* ---------- 6. Form wiring ---------- */
 const DIET_OPTIONS = ['Vegetarian', 'Non-veg', 'Vegan', 'Jain', 'High-protein', 'Low-carb'];
 function buildDietChips() {
   $('#diets').innerHTML = DIET_OPTIONS.map((d) =>
-    `<button type="button" class="chip border border-slate-300 rounded-full px-3 py-1 text-sm hover:bg-slate-50"
+    `<button type="button" class="chip border border-line rounded-full px-3.5 py-1.5 text-sm text-cream/80 hover:border-gold/60 transition"
        data-diet="${d}" aria-pressed="false">${d}</button>`).join('');
   $$('.chip').forEach((c) => c.addEventListener('click', () => {
     const on = c.getAttribute('aria-pressed') === 'true';
     c.setAttribute('aria-pressed', String(!on));
-    c.classList.toggle('bg-green-600', !on);
-    c.classList.toggle('text-white', !on);
-    c.classList.toggle('border-green-600', !on);
+    c.classList.toggle('bg-gold', !on);
+    c.classList.toggle('text-ink', !on);
+    c.classList.toggle('border-gold', !on);
   }));
 }
 function readInput() {
@@ -396,25 +414,21 @@ function readInput() {
 }
 function setLoading(on) {
   $('#generate').disabled = on;
-  $('#genIcon').textContent = on ? '⏳' : '🤖';
-  $('#genIcon').className = on ? 'spin inline-block' : '';
-  $('#genLabel').textContent = on ? 'Agent working…' : 'Generate Plan';
+  $('#genSpin').classList.toggle('hidden', !on);
+  $('#genLabel').textContent = on ? 'Generating…' : 'Generate Plan';
 }
 
 /* ---------- Init ---------- */
 function init() {
   buildDietChips();
 
-  // Key priority: local file (config.local.js) > previously saved (localStorage).
-  // The injected key is masked in the password field and never printed anywhere.
-  const injected = (window.COOKPILOT_GEMINI_KEY || '').trim();
-  if (injected && !/PASTE_YOUR/i.test(injected)) LLM.setKey(injected);
-  const saved = LLM.getKey();
-  if (saved) $('#apiKey').value = saved;
-  $('#saveKey').addEventListener('click', () => {
-    LLM.setKey($('#apiKey').value);
-    $('#saveKey').textContent = 'Saved ✓';
-    setTimeout(() => ($('#saveKey').textContent = 'Save'), 1500);
+  // Credentials live SERVER-SIDE now (Vertex AI via /api/plan). Surface which
+  // provider/billing the backend is using so it's unmistakable during the demo.
+  LLM.refreshStatus().then((s) => {
+    if (s.provider === 'claude') trail(`Provider: Claude API · ${s.model}`, 'text-gold');
+    else if (s.provider === 'vertex') trail(`Provider: Vertex AI · GCP credits ✓ · ${s.project}`, 'text-gold');
+    else if (s.provider === 'developer') trail('Provider: Gemini Developer API · ⚠ NOT GCP credits', 'text-amber-400');
+    else if (s.provider === 'none') trail('! Backend has no provider yet — add a key to .env (see README).', 'text-amber-400');
   });
 
   $('#demo').addEventListener('click', () => {
@@ -423,7 +437,7 @@ function init() {
     $$('.chip').forEach((c) => {
       const want = ['Vegetarian', 'High-protein'].includes(c.dataset.diet);
       c.setAttribute('aria-pressed', String(want));
-      c.classList.toggle('bg-green-600', want); c.classList.toggle('text-white', want); c.classList.toggle('border-green-600', want);
+      c.classList.toggle('bg-gold', want); c.classList.toggle('text-ink', want); c.classList.toggle('border-gold', want);
     });
   });
 
@@ -431,10 +445,9 @@ function init() {
     e.preventDefault();
     const input = readInput();
     if (!input.day) { $('#day').focus(); return; }
-    if (!LLM.getKey()) { trail('🔑 Add your Gemini API key (top-right) and click Save.', 'text-amber-300'); $('#apiKey').focus(); return; }
     setLoading(true);
     try { await runAgent(input); }
-    catch (err) { trail('❌ ' + (err.message || err), 'text-red-400'); }
+    catch (err) { trail('! ' + (err.message || err), 'text-bad'); }
     finally { setLoading(false); }
   });
 
@@ -459,11 +472,11 @@ function runSelfTests() {
   assert('withinBudget false when over', withinBudget(401, 400) === false);
   assert('esc neutralizes script tag', esc('<script>') === '&lt;script&gt;');
 
-  console.log('%cCook-Pilot self-tests', 'font-weight:bold');
+  console.log('%cCookMate self-tests', 'font-weight:bold');
   results.forEach((r) => console.log(r));
   const failed = results.filter((r) => r.startsWith('❌')).length;
   console.log(failed ? `${failed} test(s) failed` : 'All tests passed ✅');
-  trail(`🧪 Self-tests: ${results.length - failed}/${results.length} passed (see console).`, failed ? 'text-red-400' : 'text-green-400');
+  trail(`› Self-tests: ${results.length - failed}/${results.length} passed (see console)`, failed ? 'text-bad' : 'text-emerald-400');
 }
 
 document.addEventListener('DOMContentLoaded', init);

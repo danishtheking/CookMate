@@ -1,0 +1,16 @@
+# Render Blueprint — one-click deploy of the CookMate Node server.
+# The ANTHROPIC_API_KEY is set in the Render dashboard (sync:false = never in git).
+services:
+  - type: web
+    name: cookmate
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false                 # Render prompts you to paste it; stays out of git
+      - key: ANTHROPIC_MODEL
+        value: claude-haiku-4-5     # fast + cheap for a public demo link
